@@ -4,7 +4,7 @@ Generate massive amounts of fixtures based on predefined model using [faker.js](
 
 ## Installation
 ```console
-$ npm install fixture-factory --save-dev
+$ npm install behind-design/fixture-factory --save-dev
 ```
 
 ## Usage
