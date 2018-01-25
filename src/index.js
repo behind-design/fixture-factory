@@ -181,7 +181,7 @@ class FixtureFactory extends EventEmitter {
     return fixture;
   }
 
-  //api
+  // api
 
   noConflict() {
     return new FixtureFactory();
@@ -254,4 +254,6 @@ class FixtureFactory extends EventEmitter {
 
 }
 
-export default new FixtureFactory();
+const factory = new FixtureFactory();
+
+export default factory;
