@@ -13,7 +13,7 @@
     "url": "https://github.com/behind-design/fixture-factory.git"
   },
   "dependencies": {
-    "faker": "^3.0.1",
+    "faker": "^4.1.0",
     "lodash": "^4.17.4",
     "path": "^0.11.14"
   },
