@@ -197,7 +197,7 @@ var FixtureFactory = function (_EventEmitter) {
       return fixture;
     }
 
-    //api
+    // api
 
   }, {
     key: 'noConflict',
@@ -297,4 +297,7 @@ var FixtureFactory = function (_EventEmitter) {
   return FixtureFactory;
 }(_events.EventEmitter);
 
-exports.default = new FixtureFactory();
+var factory = new FixtureFactory();
+
+exports.default = factory;
+module.exports = exports['default'];

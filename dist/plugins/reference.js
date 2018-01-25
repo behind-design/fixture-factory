@@ -76,3 +76,4 @@ var ReferencePlugin = function () {
 }();
 
 exports.default = ReferencePlugin;
+module.exports = exports['default'];
