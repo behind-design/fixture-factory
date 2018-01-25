@@ -1,7 +1,7 @@
 /* global beforeEach,afterEach */
 
 // setup test env
-import chai, {expect} from 'chai';
+import chai, { expect } from 'chai';
 import _ from 'lodash';
 import sinon from 'sinon';
 import sinonChai from 'sinon-chai';
@@ -13,55 +13,57 @@ chai.should();
 
 // load things to test
 import fixtureFactory from '../index.js';
-import {Reference} from '../plugins';
+import { Reference } from '../plugins';
 import faker from 'faker';
 
 let referencePlugin;
 
-describe('Fixture Factory', function () {
-  describe('Module', function () {
-    it('should have a register method', function () {
+describe('Fixture Factory', function() {
+  describe('Module', function() {
+    it('should have a register method', function() {
       expect(fixtureFactory.register).to.be.a('function');
     });
 
-    it('should have a generate method', function () {
+    it('should have a generate method', function() {
       expect(fixtureFactory.generate).to.be.a('function');
     });
 
-    it('should have a generateOne method', function () {
+    it('should have a generateOne method', function() {
       expect(fixtureFactory.generateOne).to.be.a('function');
     });
 
-    it('should have a unregister method', function () {
+    it('should have a unregister method', function() {
       expect(fixtureFactory.unregister).to.be.a('function');
     });
 
-    it('should have a getGenerator method', function () {
+    it('should have a getGenerator method', function() {
       expect(fixtureFactory.getGenerator).to.be.a('function');
     });
 
-    it('should register and return itself on register', function () {
+    it('should register and return itself on register', function() {
       expect(fixtureFactory.register('..', {})).to.equal(fixtureFactory);
     });
-
   });
 
-  describe('Reference Plugin', function () {
-
+  describe('Reference Plugin', function() {
     before(function() {
       referencePlugin = new Reference(fixtureFactory);
     });
 
-    it('should have a enable method', function () {
+    after(function() {
+      referencePlugin.disable();
+    });
+
+    it('should have a enable method', function() {
       expect(referencePlugin.enable).to.be.a('function');
     });
 
-    it('should have a disable method', function () {
+    it('should have a disable method', function() {
       expect(referencePlugin.disable).to.be.a('function');
     });
 
-    describe('integration tests', function () {
-      before(function () {
+    describe('integration tests', function() {
+      before(function() {
         var dataModel = {
           someField: 'name.firstName'
         };
@@ -91,17 +93,22 @@ describe('Fixture Factory', function () {
         fixtureFactory.register('referencingModel', referencingModel);
       });
 
-      it('should provide the ability to reference another model field', function () {
+      after(function() {
+        fixtureFactory.plugins.reference.enable();
+      });
+
+      it('should provide the ability to reference another model field', function() {
         var fixtures = fixtureFactory.generate('referencingModel', 20);
 
         expect(fixtures.length).to.equal(20);
 
-        _.forEach(fixtures, function (fixture) {
+        _.forEach(fixtures, function(fixture) {
+          expect(fixture.props).to.be.a('object');
           expect(fixture.name).to.be.a('string');
         });
       });
 
-      it('should provide the ability to pass properties to another model', function () {
+      it('should provide the ability to pass properties to another model', function() {
         var fixture = fixtureFactory.generateOne('referencingModel');
 
         expect(fixture.props.id).to.exist;
@@ -109,18 +116,18 @@ describe('Fixture Factory', function () {
         expect(fixture.props.someField).to.be.a('string');
       });
 
-      it('should provide the ability to reference another model', function () {
+      it('should provide the ability to reference another model', function() {
         var fixtures = fixtureFactory.generate('referencingModel', 20);
 
         expect(fixtures.length).to.equal(20);
 
-        _.forEach(fixtures, function (fixture) {
+        _.forEach(fixtures, function(fixture) {
           expect(fixture.data).to.be.a('object');
           expect(fixture.data.someField).to.be.a('string');
         });
       });
 
-      it('should be able to be disabled', function () {
+      it('should be able to be disabled', function() {
         referencePlugin.disable();
         fixtureFactory.plugins.reference.disable();
         var fixture = fixtureFactory.generateOne('referencingModel');
@@ -131,14 +138,14 @@ describe('Fixture Factory', function () {
     });
   });
 
-  describe('unit tests', function () {
-    describe('register', function () {
-      it('should return fixtureFactory service', function () {
+  describe('unit tests', function() {
+    describe('register', function() {
+      it('should return fixtureFactory service', function() {
         expect(fixtureFactory.register('..', {})).to.equal(fixtureFactory);
         fixtureFactory.unregister();
       });
 
-      it('should register a single data model', function () {
+      it('should register a single data model', function() {
         fixtureFactory.register('test', {});
 
         expect(fixtureFactory.dataModels.test).to.be.a('object');
@@ -146,7 +153,7 @@ describe('Fixture Factory', function () {
         fixtureFactory.unregister();
       });
 
-      it('should register multiple data models via object', function () {
+      it('should register multiple data models via object', function() {
         fixtureFactory.register({
           one: {},
           two: {}
@@ -159,12 +166,12 @@ describe('Fixture Factory', function () {
       });
     });
 
-    describe('unregister', function () {
-      it('should return fixtureFactory service', function () {
+    describe('unregister', function() {
+      it('should return fixtureFactory service', function() {
         expect(fixtureFactory.unregister()).to.equal(fixtureFactory);
       });
 
-      it('should unregister a single data model', function () {
+      it('should unregister a single data model', function() {
         fixtureFactory.register('test', {});
         fixtureFactory.register('test2', {});
 
@@ -177,7 +184,7 @@ describe('Fixture Factory', function () {
         expect(fixtureFactory.dataModels.test2).to.be.a('object');
       });
 
-      it('should unregister all data models if called with no arguments', function () {
+      it('should unregister all data models if called with no arguments', function() {
         fixtureFactory.register({
           one: {},
           two: {}
@@ -193,9 +200,18 @@ describe('Fixture Factory', function () {
       });
     });
 
-    describe('getGenerator', function () {
-      it('should return object with delegated generate and generateOne functions', function () {
+    describe('getGenerator', function() {
+      var sandbox;
 
+      beforeEach(function() {
+        sandbox = sinon.sandbox.create();
+      });
+
+      afterEach(function() {
+        sandbox.restore();
+      });
+
+      it('should return object with delegated generate and generateOne functions', function() {
         fixtureFactory.register('testModel', {});
         fixtureFactory.register('testModel1', {});
         fixtureFactory.register('testModel2', {});
@@ -204,34 +220,44 @@ describe('Fixture Factory', function () {
 
         expect(testModelGenerator.generate).to.be.a('function');
         expect(testModelGenerator.generateOne).to.be.a('function');
-
       });
-      it('should return object that delegates to factory method using set key', function () {
+
+      it('should return object that delegates to factory method using set key', function() {
         fixtureFactory.register('testModel', {});
         var testModelGenerator = fixtureFactory.getGenerator('testModel');
 
-        sinon.spy(fixtureFactory, 'generate');
-        sinon.spy(fixtureFactory, 'generateOne');
+        sandbox.spy(fixtureFactory, 'generate');
+        sandbox.spy(fixtureFactory, 'generateOne');
         testModelGenerator.generate();
         testModelGenerator.generateOne();
         expect(fixtureFactory.generate).to.have.been.calledWith('testModel');
         expect(fixtureFactory.generateOne).to.have.been.calledWith('testModel');
-
       });
-
     });
 
-    describe('reset', function () {
-      it('should delegate to unregister', function () {
-        sinon.spy(fixtureFactory, 'unregister');
+    describe('reset', function() {
+      var sandbox;
+
+      beforeEach(function() {
+        sandbox = sinon.sandbox.create();
+      });
+
+      afterEach(function() {
+        sandbox.restore();
+      });
+
+      it('should delegate to unregister', function() {
+        sandbox.spy(fixtureFactory, 'unregister');
         fixtureFactory.reset();
         expect(fixtureFactory.unregister).to.have.been.called;
       });
     });
   });
 
-  describe('integration tests', function () {
-    beforeEach(function () {
+  describe('integration tests', function() {
+    var sandbox;
+
+    beforeEach(function() {
       var dataModel = {
         someField: 'name.firstName'
       };
@@ -251,18 +277,21 @@ describe('Fixture Factory', function () {
       fixtureFactory.register('exampleModel', dataModel);
       fixtureFactory.register('exampleModelWithFn', dataModelWithFn);
       fixtureFactory.register('referencingModel', referencingModel);
+
+      sandbox = sinon.sandbox.create();
     });
 
-    afterEach(function () {
+    afterEach(function() {
       fixtureFactory.unregister();
+      sandbox.restore();
     });
 
-    it('should generate single fixture based on selected dataModel', function () {
+    it('should generate single fixture based on selected dataModel', function() {
       var fixture = fixtureFactory.generateOne('exampleModel');
       expect(fixture.someField).to.exist;
     });
 
-    it('should generate single fixture based on provided dataModel object', function () {
+    it('should generate single fixture based on provided dataModel object', function() {
       var fixture = fixtureFactory.generateOne({
         someField() {
           return 'mam';
@@ -272,13 +301,13 @@ describe('Fixture Factory', function () {
       expect(fixture.someField).to.exist;
     });
 
-    it('should generate array of fixtures based on selected dataModel', function () {
+    it('should generate array of fixtures based on selected dataModel', function() {
       var fixtures = fixtureFactory.generate('exampleModel', 10);
       expect(fixtures.length).to.equal(10);
       fixtures.should.all.have.property('someField');
     });
 
-    it('should generate array of fixtures based on selected dataModel', function () {
+    it('should generate array of fixtures based on selected dataModel', function() {
       var fixtures = fixtureFactory.generate(
         {
           someField() {
@@ -292,38 +321,41 @@ describe('Fixture Factory', function () {
       fixtures.should.all.have.property('someField');
     });
 
-    it('should default to 1 as a count when not specified for generate multiple', function () {
+    it('should default to 1 as a count when not specified for generate multiple', function() {
       var fixtures = fixtureFactory.generate('exampleModel');
       expect(fixtures.length).to.equal(1);
     });
 
-    it('should allow to call generate without need to pass null in count', function () {
+    it('should allow to call generate without need to pass null in count', function() {
       var fixtures = fixtureFactory.generate('exampleModel', {
         someField: 'overwritenValue'
       });
 
       expect(fixtures[0].someField).to.equal('overwritenValue');
-
     });
 
-    it('should delegate field generation to faker.js', function () {
-      var spy = sinon.spy(faker.name, 'firstName');
+    it('should delegate field generation to faker.js', function() {
+      var spy = sandbox.spy(faker.name, 'firstName');
       fixtureFactory.generate('exampleModel', 10);
       expect(spy).to.have.callCount(10);
     });
 
-    it('should overwrite field with provided values if present', function () {
-      var fixtures = fixtureFactory.generate('exampleModel', 10, { someField: 'other value' });
+    it('should overwrite field with provided values if present', function() {
+      var fixtures = fixtureFactory.generate('exampleModel', 10, {
+        someField: 'other value'
+      });
       fixtures.should.all.have.property('someField', 'other value');
     });
 
-    it('should add field with provided values if it is not present in dataModel', function () {
-      var fixtures = fixtureFactory.generate('exampleModel', 10, { otherField: 'other value' });
+    it('should add field with provided values if it is not present in dataModel', function() {
+      var fixtures = fixtureFactory.generate('exampleModel', 10, {
+        otherField: 'other value'
+      });
       fixtures.should.all.have.property('someField');
       fixtures.should.all.have.property('otherField');
     });
 
-    it('should use passed parser functions to process fixture output', function () {
+    it('should use passed parser functions to process fixture output', function() {
       var fixture = fixtureFactory.generateOne('exampleModel', {
         lastName() {
           return 'sir';
@@ -332,12 +364,12 @@ describe('Fixture Factory', function () {
       expect(fixture.lastName).to.equal('sir');
     });
 
-    it('should use functions in data model to process fixture output', function () {
+    it('should use functions in data model to process fixture output', function() {
       var fixture = fixtureFactory.generateOne('exampleModelWithFn');
       expect(fixture.someField).to.equal('mam');
     });
 
-    it('should use functions in properties to overwrite function in data model', function () {
+    it('should use functions in properties to overwrite function in data model', function() {
       var fixture = fixtureFactory.generateOne('exampleModelWithFn', {
         someField() {
           return 'sir';
@@ -347,7 +379,7 @@ describe('Fixture Factory', function () {
       expect(fixture.someField).to.equal('sir');
     });
 
-    it('should process static properties before functions', function () {
+    it('should process static properties before functions', function() {
       var fixture = fixtureFactory.generateOne({
         fullName(fixture) {
           expect(fixture).to.be.a('object');
@@ -359,16 +391,17 @@ describe('Fixture Factory', function () {
         lastName: 'name.lastName'
       });
 
-      expect(fixture.fullName).to.equal(fixture.firstName + ' ' + fixture.lastName);
+      expect(fixture.fullName).to.equal(
+        fixture.firstName + ' ' + fixture.lastName
+      );
     });
 
-    it('in case object is passed as context it should be used as model for generation',
-    function () {
+    it('in case object is passed as context it should be used as model for generation', function() {
       var fixture = fixtureFactory.generateOne({ lastName: 'name.lastName' });
       expect(fixture.lastName).to.exist;
     });
 
-    it('should generate single model with nested child model', function () {
+    it('should generate single model with nested child model', function() {
       var fixture = fixtureFactory.generateOne({
         child: {
           firstName: 'name.firstName',
@@ -380,12 +413,15 @@ describe('Fixture Factory', function () {
       expect(fixture.child.lastName).to.exist;
     });
 
-    it('should generate single model with nested children array', function () {
+    it('should generate single model with nested children array', function() {
       var fixture = fixtureFactory.generateOne({
-        children: [{
+        children: [
+          {
             firstName: 'name.firstName',
             lastName: 'name.lastName'
-          }, 10]
+          },
+          10
+        ]
       });
 
       expect(fixture.children.length).to.equal(10);
@@ -393,8 +429,46 @@ describe('Fixture Factory', function () {
       fixture.children.should.all.have.property('lastName');
     });
 
-    it('should preserve ability to generate function based fakes while using nested models',
-       function () {
+    it('should generate array if passed an array', function() {
+      var fixture = fixtureFactory.generateOne({
+        children: [{
+          firstName: 'name.firstName',
+          lastName: 'name.lastName'
+        }, 1]
+      });
+
+      expect(fixture.children.length).to.equal(1);
+      fixture.children.should.all.have.property('firstName');
+      fixture.children.should.all.have.property('lastName');
+    });
+
+    it('should allow null to be passed as a value', function() {
+      var fixture = fixtureFactory.generateOne({
+        children: null
+      });
+
+      expect(fixture.children).to.equal(null);
+    });
+
+    it('Should parse references from arrays', function() {
+      fixtureFactory.register('workItem', {
+        date: 'date.past',
+        company: 'company.companyName'
+      });
+      fixtureFactory.register('user', {
+        firstName: 'name.firstName',
+        lastName: 'name.lastName',
+        work: ['model.workItem', 10]
+      });
+
+      const result = fixtureFactory.generateOne('user');
+      expect(result.work).to.exist;
+      expect(result.work.length).to.equal(10);
+      result.work.should.all.have.property('date');
+      result.work.should.all.have.property('company');
+    });
+
+    it('should preserve ability to generate function based fakes while using nested models', function() {
       var fixture = fixtureFactory.generateOne({
         child: {
           firstName() {
@@ -410,7 +484,7 @@ describe('Fixture Factory', function () {
       expect(fixture.child.lastName).to.equal('Doe');
     });
 
-    it('should preserve string/function generation order while using nested models', function () {
+    it('should preserve string/function generation order while using nested models', function() {
       var fixture = fixtureFactory.generateOne({
         child: {
           fullName(fixture) {
@@ -425,10 +499,11 @@ describe('Fixture Factory', function () {
       });
 
       expect(fixture.child.fullName).to.equal(
-        fixture.child.firstName + ' ' + fixture.child.lastName);
+        fixture.child.firstName + ' ' + fixture.child.lastName
+      );
     });
 
-    it('should generate single model with multiply nested child models', function () {
+    it('should generate single model with multiply nested child models', function() {
       var fixture = fixtureFactory.generateOne({
         child: {
           names: {
@@ -447,6 +522,5 @@ describe('Fixture Factory', function () {
     it('faker', function(done) {
       done();
     });
-
   });
 });

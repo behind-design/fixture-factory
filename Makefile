@@ -3,6 +3,10 @@
 clean:
 	rm -rf ./dist
 
+watch:
+	make clean
+	./scripts/watch.sh
+
 init:
 	make install
 	make setup-hooks

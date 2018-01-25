@@ -1,7 +1,16 @@
 import faker from 'faker';
-import {extend, isObject, isFunction, cloneDeep, isArray, each} from 'lodash';
-import {EventEmitter} from 'events';
-import {Reference} from './plugins';
+import {
+  extend,
+  isObject,
+  isFunction,
+  cloneDeep,
+  isArray,
+  isNull,
+  each,
+  get
+} from 'lodash';
+import { EventEmitter } from 'events';
+import { Reference } from './plugins';
 
 class FixtureFactory extends EventEmitter {
 
@@ -18,7 +27,7 @@ class FixtureFactory extends EventEmitter {
   _parseFieldModel(method) {
     //check if passed method is a shorthhand, if yes parse it to proper field model
     const isProperFieldModel = !isFunction(method) && isObject(method) && method.method;
-    return isProperFieldModel ? method : { method: method };
+    return cloneDeep(isProperFieldModel ? method : { method: method });
   }
 
   _handleFunction(model, fixture, dataModel) {
@@ -32,13 +41,13 @@ class FixtureFactory extends EventEmitter {
   }
 
   _handleString(model) {
-
     let callStack = model.method.split('.');
     let nestedFakerMethod = faker;
     let isMethod = true;
     let args = model.args || [];
     let options = model.options ? cloneDeep(model.options) : void 0;
     let nextMethod;
+    let context;
 
     if (options) {
       console.warn('Passing arguments to faker using the "options" property has been deprecated.');
@@ -49,6 +58,7 @@ class FixtureFactory extends EventEmitter {
     while (callStack.length) {
       nextMethod = callStack.shift();
       if (nestedFakerMethod[nextMethod]) {
+        context = nestedFakerMethod;
         nestedFakerMethod = nestedFakerMethod[nextMethod];
       } else {
         isMethod = false;
@@ -56,7 +66,7 @@ class FixtureFactory extends EventEmitter {
       }
     }
 
-    return isMethod ? nestedFakerMethod(...args) : model.method;
+    return isMethod ? nestedFakerMethod.call(context, ...args) : model.method;
   }
 
   _generateField(name, method, fixture, dataModel, generatedFixtures) {
@@ -71,33 +81,39 @@ class FixtureFactory extends EventEmitter {
       model: fieldModel
     });
 
-    switch (typeof fieldModel.method) {
-      case 'function':
-        field = this._handleFunction(fieldModel, fixture, dataModel);
-        break;
+    if (!isNull(fieldModel.method)) {
+      switch (typeof fieldModel.method) {
+        case 'function':
+          field = this._handleFunction(fieldModel, fixture, dataModel);
+          break;
 
-      case 'string':
-        field = this._handleString(fieldModel);
-        break;
+        case 'string':
+          field = this._handleString(fieldModel);
+          break;
 
-      case 'number':
-      case 'boolean':
-        field = fieldModel.method;
-        break;
+        case 'number':
+        case 'boolean':
+          field = fieldModel.method;
+          break;
 
-      // method is an object so just return it
-      default :
-        if (isArray(fieldModel.method)) {
-          count = fieldModel.method[1] || 1;
-        } else {
-          fieldModel.method = [fieldModel.method];
-        }
+        // method is an object so just return it
+        default:
+          const wasArray = isArray(fieldModel.method);
 
-        field = this.generate(...fieldModel.method);
+          if (wasArray) {
+            count = fieldModel.method[1] || 1;
+          } else {
+            fieldModel.method = [fieldModel.method];
+          }
 
-        if (count === 1) {
-          field = field[0];
-        }
+          field = this.generate(...fieldModel.method);
+
+          if (!wasArray && count === 1) {
+            field = field[0];
+          }
+      }
+    } else {
+      field = fieldModel.method;
     }
 
     this.emit('field', {
@@ -129,8 +145,10 @@ class FixtureFactory extends EventEmitter {
     });
 
     each(dataModel, (value, key) => {
+      const functionBased = isFunction(value) || isFunction((get(value, 'method')));
+
       // if field has a generator function assigned to it, cache it for later
-      if (!isFunction(value) && !isFunction(value.method)) {
+      if (!functionBased) {
         fixture[key] = this._generateField(
           key,
           value,
