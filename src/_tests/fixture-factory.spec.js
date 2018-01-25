@@ -384,7 +384,9 @@ describe('Fixture Factory', function() {
         fullName(fixture) {
           expect(fixture).to.be.a('object');
           expect(fixture.firstName).to.be.a('string');
+          expect(fixture.firstName).not.to.equal('name.firstName');
           expect(fixture.lastName).to.be.a('string');
+          expect(fixture.lastName).not.to.equal('name.lastName');
           return fixture.firstName + ' ' + fixture.lastName;
         },
         firstName: 'name.firstName',
